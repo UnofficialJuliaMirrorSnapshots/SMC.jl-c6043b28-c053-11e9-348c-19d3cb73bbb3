@@ -1,7 +1,11 @@
 """
 ```
-mutation(loglikelihood::Function, parameters::ParameterVector{U}, data, p, d_μ, d_Σ,
-         blocks_free, blocks_all, ϕ_n, ϕ_n1; c = 1., α = 1., old_data)
+mutation(loglikelihood::Function, parameters::ParameterVector{U},
+                  data::Matrix{S}, p::Vector{S}, d_μ::Vector{S}, d_Σ::Matrix{S},
+                  blocks_free::Vector{Vector{Int}}, blocks_all::Vector{Vector{Int}},
+                  ϕ_n::S, ϕ_n1::S; c::S = 1., α::S = 1., n_mh_steps::Int = 1,
+                  old_data::T = T(undef, size(data, 1), 0)) where {S<:AbstractFloat,
+                                                                   T<:AbstractMatrix, U<:Number}
 ```
 
 Execute one proposed move of the Metropolis-Hastings algorithm for a given parameter
@@ -61,8 +65,7 @@ function mutation(loglikelihood::Function, parameters::ParameterVector{U},
             # centered at weighted mean, with Σ corresponding to the same random block
             para_subset = para[block_a]
             d_subset    = MvNormal(d.μ[block_f], d.Σ.mat[block_f, block_f])
-
-            para_draw = mvnormal_mixture_draw(para_subset, d_subset; c = c, α = α)
+            para_draw   = mvnormal_mixture_draw(para_subset, d_subset; c = c, α = α)
 
             q0, q1 = compute_proposal_densities(para_draw, para_subset,
                                                 d_subset, c = c, α = α)
@@ -70,15 +73,12 @@ function mutation(loglikelihood::Function, parameters::ParameterVector{U},
             para_new          = deepcopy(para)
             para_new[block_a] = para_draw
 
-            like_init  = like
-            prior_init = logprior
-
+            like_init, prior_init = like, logprior
             prior_new = like_new = like_old_data = -Inf
             try
                 update!(parameters, para_new)
                 para_new  = [θ.value for θ in parameters]
                 prior_new = prior(parameters)
-
                 like_new  = loglikelihood(parameters, data)
 
                 if like_new == -Inf

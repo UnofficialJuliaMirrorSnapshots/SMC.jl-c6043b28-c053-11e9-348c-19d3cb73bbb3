@@ -1,0 +1,4 @@
+# SMC.jl Documentation
+
+```@contents
+```
